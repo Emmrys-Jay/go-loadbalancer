@@ -1,2 +1,3 @@
 # go-loadbalancer
-Loadbalancer with various balancing strategies 
+
+A loadbalancer that supports different load balancing strategies
