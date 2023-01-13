@@ -2,6 +2,7 @@ strategy: "RoundRobin"
 services: 
   - 
     name: "Test service 1"
+    matcher: "/api/v1"
     replicas: 
       - "http://localhost:8081"
       - "http://localhost:8082"

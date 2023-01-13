@@ -8,7 +8,10 @@ import (
 )
 
 type Service struct {
-	Name     string   `yaml:"name"`
+	Name string `yaml:"name"`
+
+	// A prefix matcher to select service based on the path part of the url
+	Matcher  string   `yaml:"matcher"`
 	Replicas []string `yaml:"replicas"`
 }
 
@@ -28,10 +31,14 @@ type Server struct {
 }
 
 type ServerList struct {
+	// Servers are the replicas
 	Servers []*Server
+
+	// Name is the name of the service
+	Name string
 	// the current server to forward the request to.
 	// the next server should be (current + 1) % len(servers)
-	Current uint32
+	current uint32
 }
 
 func (s *Server) Forward(rw http.ResponseWriter, r *http.Request) {
@@ -39,7 +46,7 @@ func (s *Server) Forward(rw http.ResponseWriter, r *http.Request) {
 }
 
 func (sl *ServerList) Next() uint32 {
-	nxt := atomic.AddUint32(&sl.Current, uint32(1))
+	nxt := atomic.AddUint32(&sl.current, uint32(1))
 	lenS := uint32(len(sl.Servers))
 	return nxt % lenS
 }

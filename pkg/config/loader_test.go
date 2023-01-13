@@ -24,6 +24,10 @@ func TestLoadConfig(t *testing.T) {
 		t.Errorf("Expected service name to be  'Test service 1', got '%s'", conf.Services[0].Name)
 	}
 
+	if conf.Services[0].Matcher != "/api/v1" {
+		t.Errorf("Expected matcher '/api/v1', got '%s'", conf.Services[0].Matcher)
+	}
+
 	if len(conf.Services[0].Replicas) != 2 {
 		t.Errorf("Expected service replicas count to be '2', got '%d'", len(conf.Services[0].Replicas))
 	}
