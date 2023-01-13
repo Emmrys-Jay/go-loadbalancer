@@ -24,6 +24,10 @@ func TestLoadConfig(t *testing.T) {
 		t.Errorf("Expected service name to be  'Test service 1', got '%s'", conf.Services[0].Name)
 	}
 
+	if conf.Services[0].Strategy != "RoundRobin" {
+		t.Errorf("Expected strategy for service 'RoundRobin', got '%s'", conf.Strategy)
+	}
+
 	if conf.Services[0].Matcher != "/api/v1" {
 		t.Errorf("Expected matcher '/api/v1', got '%s'", conf.Services[0].Matcher)
 	}

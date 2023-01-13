@@ -3,6 +3,7 @@ services:
   - 
     name: "Test service 1"
     matcher: "/"
+    strategy: "RoundRobin"
     replicas: 
       - "http://localhost:8081"
       - "http://localhost:8082"

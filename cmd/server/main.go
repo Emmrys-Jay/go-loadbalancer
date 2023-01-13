@@ -10,6 +10,8 @@ import (
 	"strings"
 
 	"github.com/Emmrys-Jay/go-loadbalancer/pkg/config"
+	"github.com/Emmrys-Jay/go-loadbalancer/pkg/domain"
+	"github.com/Emmrys-Jay/go-loadbalancer/pkg/strategy"
 )
 
 var (
@@ -34,7 +36,7 @@ func NewLoadBalancer(conf *config.Config) *LoadBalancer {
 
 	for _, service := range conf.Services {
 		// TODO: Don't ignore names
-		servers := make([]*config.Server, 0, len(service.Replicas))
+		servers := make([]*domain.Server, 0, len(service.Replicas))
 		// Make all replicas into Servers
 		for _, replica := range service.Replicas {
 			url, err := url.Parse(replica)
@@ -42,14 +44,15 @@ func NewLoadBalancer(conf *config.Config) *LoadBalancer {
 				log.Fatalln(err)
 			}
 			proxy := httputil.NewSingleHostReverseProxy(url)
-			servers = append(servers, &config.Server{
+			servers = append(servers, &domain.Server{
 				URL:   url,
 				Proxy: proxy,
 			})
 		}
 		serverList[service.Matcher] = &config.ServerList{
-			Servers: servers,
-			Name:    service.Name,
+			Servers:  servers,
+			Name:     service.Name,
+			Strategy: strategy.LoadStrategy(service.Strategy),
 		}
 	}
 
@@ -87,10 +90,10 @@ func (l *LoadBalancer) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	next := sl.Next()
-	log.Printf("Forwarding to server number '%d'", next)
+	server := sl.Strategy.Next(sl.Servers)
+	log.Printf("Forwarding to server number %s", server.URL.Host)
 	// Forwarding the request to the proxy
-	sl.Servers[next].Forward(rw, r)
+	server.Forward(rw, r)
 }
 
 func main() {
