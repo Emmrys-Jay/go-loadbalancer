@@ -6,6 +6,11 @@ import (
 	"net/url"
 )
 
+type Replica struct {
+	URL      string            `yaml:"url"`
+	Metadata map[string]string `yaml:"metadata"`
+}
+
 type Service struct {
 	Name string `yaml:"name"`
 
@@ -13,8 +18,8 @@ type Service struct {
 	Matcher string `yaml:"matcher"`
 
 	// Strategy is the load balancing strategy for the current service
-	Strategy string   `yaml:"strategy"`
-	Replicas []string `yaml:"replicas"`
+	Strategy string    `yaml:"strategy"`
+	Replicas []Replica `yaml:"replicas"`
 }
 
 // Server is an instance of a running server

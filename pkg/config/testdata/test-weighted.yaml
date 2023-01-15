@@ -1,0 +1,12 @@
+strategy: "WeightedRoundRobin"
+services: 
+  - name: "Test service 2"
+    matcher: "/api/v1"
+    strategy: "WeightedRoundRobin"
+    replicas: 
+    - url: "http://localhost:8081"
+      metadata: 
+        weight: 10
+    - url: "http://localhost:8082"
+      metadata:
+        weight: 5

@@ -39,7 +39,7 @@ func NewLoadBalancer(conf *config.Config) *LoadBalancer {
 		servers := make([]*domain.Server, 0, len(service.Replicas))
 		// Make all replicas into Servers
 		for _, replica := range service.Replicas {
-			url, err := url.Parse(replica)
+			url, err := url.Parse(replica.URL)
 			if err != nil {
 				log.Fatalln(err)
 			}

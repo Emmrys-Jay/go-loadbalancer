@@ -1,0 +1,15 @@
+# This example shows how to configure load balancing for when
+# a replica doesn't offer the same load balancing capability.
+# Usually, this is as a result of difference in compute power.
+strategy: "WeightedRoundRobin"
+services: 
+  - name: "Service02"
+    matcher: "/api/v1"
+    strategy: "WeightedRoundRobin"
+    replicas: 
+    - url: "http://localhost:8081"
+      metadata: 
+        weight: 10
+    - url: "http://localhost:8082"
+      metadata:
+        weight: 5
