@@ -9,7 +9,7 @@ services:
     replicas: 
     - url: "http://localhost:8081"
       metadata: 
-        weight: 10
+        weight: 4
     - url: "http://localhost:8082"
       metadata:
-        weight: 5
+        weight: 2

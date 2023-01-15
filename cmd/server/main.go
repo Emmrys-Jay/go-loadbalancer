@@ -3,11 +3,12 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"strings"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/Emmrys-Jay/go-loadbalancer/pkg/config"
 	"github.com/Emmrys-Jay/go-loadbalancer/pkg/domain"
@@ -45,8 +46,9 @@ func NewLoadBalancer(conf *config.Config) *LoadBalancer {
 			}
 			proxy := httputil.NewSingleHostReverseProxy(url)
 			servers = append(servers, &domain.Server{
-				URL:   url,
-				Proxy: proxy,
+				URL:      url,
+				Proxy:    proxy,
+				Metadata: replica.Metadata,
 			})
 		}
 		serverList[service.Matcher] = &config.ServerList{
@@ -69,7 +71,7 @@ func (l *LoadBalancer) findServiceList(reqPath string) (*config.ServerList, erro
 	log.Printf("Trying to find matcher for request '%s'", reqPath)
 	for matcher, sl := range l.ServerList {
 		if strings.HasPrefix(reqPath, matcher) {
-			log.Printf("Found service '%s' matching the request", sl.Name)
+			log.Infof("Found service '%s' matching the request", sl.Name)
 			return sl, nil
 		}
 	}
@@ -81,17 +83,18 @@ func (l *LoadBalancer) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	// TODO: we need to support per service forwarding, i.e this method
 	// should read request path, say host:port/service/rest/of/url , this should be
 	// forwarded against service named "service" and url will be "host(i):port(i)/rest/of/url"
-	log.Printf("Received new request: url=%s", r.Host)
+	log.Infof("Received new request: url=%s", r.Host)
 
 	sl, err := l.findServiceList(r.URL.Path)
 	if err != nil {
-		log.Print(err)
+		log.Warn(err)
 		rw.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	server := sl.Strategy.Next(sl.Servers)
-	log.Printf("Forwarding to server number %s", server.URL.Host)
+	log.Infof("Forwarding to server number %s", server.URL.Host)
+	log.Info("\n")
 	// Forwarding the request to the proxy
 	server.Forward(rw, r)
 }
