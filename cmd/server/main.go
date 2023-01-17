@@ -12,6 +12,7 @@ import (
 
 	"github.com/Emmrys-Jay/go-loadbalancer/pkg/config"
 	"github.com/Emmrys-Jay/go-loadbalancer/pkg/domain"
+	"github.com/Emmrys-Jay/go-loadbalancer/pkg/health"
 	"github.com/Emmrys-Jay/go-loadbalancer/pkg/strategy"
 )
 
@@ -22,7 +23,7 @@ var (
 
 type LoadBalancer struct {
 	// Config is the configuration loaded from a config yaml file
-	// TODO: This could be improved to fetch the vonfiguration from
+	// TODO: This could be improved to fetch the configuration from
 	// a more abstract concept (like ConfigSource) that can either be
 	// a file or something else, and it should support hot reloading.
 	Config *config.Config
@@ -36,7 +37,6 @@ func NewLoadBalancer(conf *config.Config) *LoadBalancer {
 	serverList := make(map[string]*config.ServerList)
 
 	for _, service := range conf.Services {
-		// TODO: Don't ignore names
 		servers := make([]*domain.Server, 0, len(service.Replicas))
 		// Make all replicas into Servers
 		for _, replica := range service.Replicas {
@@ -51,13 +51,21 @@ func NewLoadBalancer(conf *config.Config) *LoadBalancer {
 				Metadata: replica.Metadata,
 			})
 		}
+		checker, err := health.NewHealthChecker(nil, servers)
+		if err != nil {
+			log.Fatalln(err)
+		}
 		serverList[service.Matcher] = &config.ServerList{
 			Servers:  servers,
 			Name:     service.Name,
 			Strategy: strategy.LoadStrategy(service.Strategy),
+			Hc:       checker,
 		}
 	}
-
+	// starts all the health checkers for all matchers
+	for _, v := range serverList {
+		go v.Hc.Start()
+	}
 	return &LoadBalancer{
 		Config:     conf,
 		ServerList: serverList,
@@ -87,12 +95,18 @@ func (l *LoadBalancer) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 
 	sl, err := l.findServiceList(r.URL.Path)
 	if err != nil {
-		log.Warn(err)
+		log.Error(err)
 		rw.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	server := sl.Strategy.Next(sl.Servers)
+	server, err := sl.Strategy.Next(sl.Servers)
+	if err != nil {
+		log.Error(err)
+		rw.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
 	log.Infof("Forwarding to server number %s", server.URL.Host)
 	log.Info("\n")
 	// Forwarding the request to the proxy
