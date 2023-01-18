@@ -79,7 +79,15 @@ func TestLoadConfigWithWeightedRoundRobin(t *testing.T) {
 		t.Errorf("Expected service replica 1 to be  'http://localhost:8081', got '%s'", conf.Services[0].Replicas[0])
 	}
 
+	if conf.Services[0].Replicas[0].Metadata["weight"] != "10" {
+		t.Errorf("Expected service replica 1 metadata for weight to be  '10', got '%s'", conf.Services[0].Replicas[0].Metadata["weight"])
+	}
+
 	if conf.Services[0].Replicas[1].URL != "http://localhost:8082" {
 		t.Errorf("Expected service name to be  'http://localhost:8082', got '%s'", conf.Services[0].Replicas[1])
+	}
+
+	if conf.Services[0].Replicas[1].Metadata["weight"] != "5" {
+		t.Errorf("Expected service replica 1 metadata for weight to be  '5', got '%s'", conf.Services[0].Replicas[1].Metadata["weight"])
 	}
 }
