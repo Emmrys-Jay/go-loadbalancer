@@ -1,8 +1,8 @@
 package strategy
 
 import (
+	"errors"
 	"sync"
-	"sync/atomic"
 
 	log "github.com/sirupsen/logrus"
 
@@ -16,29 +16,39 @@ const (
 )
 
 var strategies = map[string]BalancingStrategy{
-	S_RoundRobin:         &RoundRobin{current: uint32(0)},
+	S_RoundRobin:         &RoundRobin{current: 0, mu: sync.Mutex{}},
 	S_WeightedRoundRobin: &WeightedRoundRobin{mu: sync.Mutex{}},
 }
 
 // BalancingStrategy is the abstraction that allow for using different
 // load balancing strategies.
 type BalancingStrategy interface {
-	Next(servers []*domain.Server) *domain.Server
+	Next(servers []*domain.Server) (*domain.Server, error)
 }
 
 // RoundRobin implements BalancingStrategy
 type RoundRobin struct {
+	mu sync.Mutex
 	// the current server to forward the request to.
 	// the next server should be (current + 1) % len(servers)
-	current uint32
+	current int
 }
 
-func (rr *RoundRobin) Next(servers []*domain.Server) *domain.Server {
-	nxt := atomic.AddUint32(&rr.current, uint32(1))
-	lenS := uint32(len(servers))
-	picked := servers[nxt%lenS]
-	log.Printf("Strategy picked server %s", picked.URL.Host)
-	return picked
+func (rr *RoundRobin) Next(servers []*domain.Server) (*domain.Server, error) {
+	rr.mu.Lock()
+	defer rr.mu.Unlock()
+	seen := 0
+	for seen < len(servers) {
+		rr.current = (rr.current + 1) % len(servers)
+
+		if servers[rr.current].IsAlive() {
+			return servers[rr.current], nil
+		}
+		seen++
+	}
+
+	log.Warnf("All servers are down")
+	return nil, errors.New("all servers are down")
 }
 
 // WeightedRoundRobin is a strategy that is similar to the RoundRobin, but
@@ -52,7 +62,7 @@ type WeightedRoundRobin struct {
 	mu sync.Mutex
 	// Note: This is making the assumption that the server lists coming through the
 	// Next function won't change between successive calls.
-	// Changing the server list would cause this strategy tp break, panic, or
+	// Changing the server list would cause this strategy to break, panic, or
 	// not route properly.
 	//
 	// count will keep track of the number of request server 'i' has processed.
@@ -61,9 +71,10 @@ type WeightedRoundRobin struct {
 	current int
 }
 
-func (wrr *WeightedRoundRobin) Next(servers []*domain.Server) *domain.Server {
+func (wrr *WeightedRoundRobin) Next(servers []*domain.Server) (*domain.Server, error) {
 	wrr.mu.Lock()
 	defer wrr.mu.Unlock()
+	seen := 0
 	if wrr.count == nil {
 		// First time using the strategy
 		wrr.count = make([]int, len(servers))
@@ -71,19 +82,24 @@ func (wrr *WeightedRoundRobin) Next(servers []*domain.Server) *domain.Server {
 	}
 
 	capacity := servers[wrr.current].GetMetaOrDefaultInt("weight", 1)
-	if wrr.count[wrr.current] < capacity {
-		// Current server can still accept some requests
-		wrr.count[wrr.current]++
-		log.Printf("Strategy picked server %s", servers[wrr.current].URL.Host)
-		return servers[wrr.current]
+
+	for seen < len(servers) {
+		if wrr.count[wrr.current] < capacity && servers[wrr.current].IsAlive() {
+			// Current server can still accept some requests
+			wrr.count[wrr.current]++
+			log.Printf("Strategy picked server %s", servers[wrr.current].URL.Host)
+			return servers[wrr.current], nil
+		}
+		seen++
+
+		// Server has gotten to its limit
+		// Reset the current one and move to the next
+		wrr.count[wrr.current] = 0
+		wrr.current = (wrr.current + 1) % len(servers)
 	}
 
-	// Server has gotten to its limit
-	// Reset the current one and move to the next
-	wrr.count[wrr.current] = 0
-	wrr.current = (wrr.current + 1) % len(servers)
-	log.Printf("Strategy picked server %s", servers[wrr.current].URL.Host)
-	return servers[wrr.current]
+	log.Warn("All servers are down")
+	return nil, errors.New("all servers are down")
 }
 
 // LoadStrategy tries to resolve the balancing strategy based on its name.

@@ -6,7 +6,17 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"strconv"
+	"sync"
 )
+
+// Config is a representation of the configuration
+// given to the LB from a config source
+type Config struct {
+	Services []Service `yaml:"services"`
+
+	// Strategy is the name of strategy to be used in load balancing between instances
+	Strategy string `yaml:"strategy"`
+}
 
 type Replica struct {
 	URL      string            `yaml:"url"`
@@ -29,6 +39,10 @@ type Server struct {
 	URL      *url.URL
 	Proxy    *httputil.ReverseProxy
 	Metadata map[string]string
+
+	//
+	mu    sync.RWMutex
+	alive bool
 }
 
 func (s *Server) Forward(rw http.ResponseWriter, r *http.Request) {
@@ -54,4 +68,20 @@ func (s *Server) GetMetaOrDefaultInt(key string, def int) int {
 		return def
 	}
 	return a
+}
+
+// SetLiveness will change the current alive field value, and returns the former
+func (s *Server) SetLiveness(value bool) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	old := s.alive
+	s.alive = value
+	return old
+}
+
+// IsAlive reports the liveness state of a server
+func (s *Server) IsAlive() bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.alive
 }

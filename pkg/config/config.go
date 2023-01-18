@@ -2,6 +2,7 @@ package config
 
 import (
 	"github.com/Emmrys-Jay/go-loadbalancer/pkg/domain"
+	"github.com/Emmrys-Jay/go-loadbalancer/pkg/health"
 	"github.com/Emmrys-Jay/go-loadbalancer/pkg/strategy"
 )
 
@@ -24,4 +25,7 @@ type ServerList struct {
 	// Strategy defines how the server list is load balanced
 	// It can never be nil, instead it defaults to RoundRobin
 	Strategy strategy.BalancingStrategy
+
+	// Hc checks for the health of each server in 'Servers' above
+	Hc *health.HealthChecker
 }
