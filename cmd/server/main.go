@@ -64,7 +64,7 @@ func NewLoadBalancer(conf *config.Config) *LoadBalancer {
 	}
 	// starts all the health checkers for all matchers
 	for _, v := range serverList {
-		go v.Hc.Start()
+		go v.Hc.Start(v.Name)
 	}
 	return &LoadBalancer{
 		Config:     conf,
@@ -107,7 +107,7 @@ func (l *LoadBalancer) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Infof("Forwarding to server number %s", server.URL.Host)
+	log.Infof("Forwarding to server '%s'", server.URL.Host)
 	log.Info("\n")
 	// Forwarding the request to the proxy
 	server.Forward(rw, r)
