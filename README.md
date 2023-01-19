@@ -1,6 +1,6 @@
 # go-loadbalancer
 
-A [load balancer]() written in Go
+A load balancer supporting multiple load balancing strategies
 
 ## Load Balancing Algorithms 
 - Round Robin
@@ -11,7 +11,7 @@ Round Robin is a simple load balancing algorithm that involves
 distributes network traffic to different app servers (replicas) 
 in a sequential order with no preference (one after the other).
 
-### [Weighted Round Robin]()
+### [Weighted Round Robin](https://en.wikipedia.org/wiki/Weighted_round_robin)
 Weighted Round Robin is a variant of Round Robin that takes into 
 consideration the possibility of the different app servers having 
 different computing capacity. The capacity of each app server is 
@@ -57,14 +57,14 @@ services:
 
 - Run the project using the command below. The default port is `8080`.
 ```shell
-go run cmd/server/main.go --port <port-to-start-the-lb-server> --config <path-to-your-config-file>
+go run cmd/server/main.go --port /port/to/start/the/lb/server --config /path/to/your/config/file
 ```
 
 - To test the program without going through the process of creating your own config
 files, run the program using the default config file for a `RoundRobin` strategy in 
 `example/config.yaml` using:
 ```shell
-go run cmd/server/main.go --port <port-to-start-the-lb-server>
+go run cmd/server/main.go --port /port/to/start/the/lb/server
 ```
 
 - Forward requests to the load balancer using curl or via the browser. Ensure the 
@@ -77,3 +77,15 @@ curl localhost:8080/api/v1
 
 - You can view a sample of a `WeightedRoundRobin` config file in 
 `example/config-weighted.yaml`
+
+## Building a demo 
+
+If you want to try load balancer, you can run the demo server in the `cmd/demo/main.go` directory, which 
+starts up a hello world server listening to a specified port.
+
+Launching a demo server is as easy as:
+```shell
+go run cmd/demo/main.go --port /port/to/start/the/lb/server
+```
+
+__NB__: You are free to fork and use this project.
